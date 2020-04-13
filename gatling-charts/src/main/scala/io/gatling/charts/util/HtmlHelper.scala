@@ -14,13 +14,23 @@
  * limitations under the License.
  */
 
-package io.gatling.commons.util
+package io.gatling.charts.util
 
-import java.nio.file.Path
+import java.util.ResourceBundle
 
-final case class CachingPath(path: Path) {
+import scala.collection.JavaConverters._
 
-  override def toString: String = path.toString
+object HtmlHelper {
 
-  lazy val filename: String = path.getFileName.toString
+  private val entities = ResourceBundle.getBundle("html-entities")
+
+  private val charToHtmlEntities: Map[Char, String] = entities.getKeys.asScala.map { entityName =>
+    (entities.getString(entityName).toInt.toChar, s"&$entityName;")
+  }.toMap
+
+  implicit class HtmlRichString(val string: String) extends AnyVal {
+
+    def htmlEscape: String =
+      string.map(char => charToHtmlEntities.getOrElse(char, char.toString)).mkString
+  }
 }

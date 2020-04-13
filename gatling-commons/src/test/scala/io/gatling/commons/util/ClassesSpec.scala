@@ -16,20 +16,21 @@
 
 package io.gatling.commons.util
 
-object HexUtils {
+import io.gatling.BaseSpec
 
-  def fromHexString(hexString: String): Array[Byte] =
-    hexString.grouped(2).map(Integer.parseInt(_, 16).toByte).toArray
+import io.gatling.commons.util.Classes._
 
-  def toHexString(bytes: Array[Byte]): String = {
-    val sb = new StringBuilder
-    bytes.foreach { byte =>
-      sb.append(f"$byte%02X")
-    }
-    sb.toString
+class ClassesSpec extends BaseSpec {
+
+  "getShortName" should "shorten Class name" in {
+    classOf[java.util.concurrent.TimeoutException].getShortName shouldBe "j.u.c.TimeoutException"
   }
 
-  private val HexChars = Array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F')
+  "toClassShortName" should "shorten String with package" in {
+    toClassShortName("foo.bar.baz.Foo") shouldBe "f.b.b.Foo"
+  }
 
-  def toHexChar(digit: Int): Char = HexChars(digit)
+  it should "leave String without package as is" in {
+    toClassShortName("Foo") shouldBe "Foo"
+  }
 }

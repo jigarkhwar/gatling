@@ -22,12 +22,12 @@ import io.gatling.commons.validation._
 import io.gatling.core.body._
 import io.gatling.core.config.GatlingConfiguration
 import io.gatling.core.session._
-import io.gatling.http.cache.{ ContentCacheEntry, HttpCaches }
+import io.gatling.http.cache.{ ContentCacheEntry, Http2PriorKnowledgeSupport, HttpCaches }
 import io.gatling.http.client.body.bytearray.ByteArrayRequestBodyBuilder
 import io.gatling.http.client.body.file.FileRequestBodyBuilder
 import io.gatling.http.client.body.form.FormUrlEncodedRequestBodyBuilder
 import io.gatling.http.client.body.is.InputStreamRequestBodyBuilder
-import io.gatling.http.client.body.multipart.{ MultipartFormDataRequestBodyBuilder, StringPart }
+import io.gatling.http.client.body.multipart.{ MultipartFormDataRequestBodyBuilder, Part, StringPart }
 import io.gatling.http.client.body.string.StringRequestBodyBuilder
 import io.gatling.http.client.body.stringchunks.StringChunksRequestBodyBuilder
 import io.gatling.http.client.{ Request, RequestBuilder => ClientRequestBuilder }
@@ -35,6 +35,19 @@ import io.gatling.http.protocol.{ HttpProtocol, Remote }
 import io.gatling.http.request.BodyPart
 
 import io.netty.handler.codec.http.HttpHeaderNames
+
+object HttpRequestExpressionBuilder {
+
+  private val bodyPartsToMultipartsZero = List.empty[Part[_]].success
+
+  private def bodyPartsToMultiparts(bodyParts: List[BodyPart], session: Session): Validation[List[Part[_]]] =
+    bodyParts.foldLeft(bodyPartsToMultipartsZero) { (acc, bodyPart) =>
+      for {
+        accValue <- acc
+        value <- bodyPart.toMultiPart(session)
+      } yield accValue :+ value
+    }
+}
 
 class HttpRequestExpressionBuilder(
     commonAttributes: CommonAttributes,
@@ -50,7 +63,7 @@ class HttpRequestExpressionBuilder(
     for {
       params <- httpAttributes.formParams.mergeWithFormIntoParamJList(httpAttributes.form, session)
       stringParts = params.asScala.map(param => new StringPart(param.getName, param.getValue, charset, null, null, null, null, null))
-      parts <- Validation.sequence(bodyParts.map(_.toMultiPart(session)))
+      parts <- HttpRequestExpressionBuilder.bodyPartsToMultiparts(bodyParts, session)
     } yield requestBuilder.setBodyBuilder(new MultipartFormDataRequestBodyBuilder((stringParts ++ parts).asJava))
 
   private def setBody(session: Session, requestBuilder: ClientRequestBuilder, body: Body): Validation[ClientRequestBuilder] =
@@ -93,7 +106,7 @@ class HttpRequestExpressionBuilder(
 
   private val configurePriorKnowledge: RequestBuilderConfigure = {
     if (httpProtocol.enginePart.enableHttp2) { session => requestBuilder =>
-      val http2PriorKnowledge = httpCaches.isHttp2PriorKnowledge(session, Remote(requestBuilder.getUri))
+      val http2PriorKnowledge = Http2PriorKnowledgeSupport.isHttp2PriorKnowledge(session, Remote(requestBuilder.getUri))
       requestBuilder
         .setHttp2Enabled(true)
         .setAlpnRequired(http2PriorKnowledge.forall(_ == true)) // ALPN is necessary only if we know that this remote is using HTTP/2 or if we still don't know

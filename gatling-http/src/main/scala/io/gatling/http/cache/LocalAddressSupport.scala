@@ -21,30 +21,21 @@ import java.net.InetAddress
 import io.gatling.commons.util.CircularIterator
 import io.gatling.core.session.{ Session, SessionPrivateAttributes }
 import io.gatling.http.protocol.HttpProtocol
-import io.gatling.http.util.HttpTypeCaster
 
-private[cache] object LocalAddressSupport {
+private[http] object LocalAddressSupport {
 
-  val LocalAddressAttributeName: String = SessionPrivateAttributes.PrivateAttributePrefix + "http.cache.localAddress"
-}
-
-private[cache] trait LocalAddressSupport {
-
-  import LocalAddressSupport._
+  private val LocalAddressAttributeName: String = SessionPrivateAttributes.PrivateAttributePrefix + "http.cache.localAddress"
 
   def setLocalAddress(httpProtocol: HttpProtocol): Session => Session = {
     httpProtocol.enginePart.localAddresses match {
-      case Nil            => identity
+      case Nil            => Session.Identity
       case address :: Nil => _.set(LocalAddressAttributeName, address)
-      case address =>
-        val it = CircularIterator(address.toVector, threadSafe = true)
+      case addresses =>
+        val it = CircularIterator(addresses.toVector, threadSafe = true)
         _.set(LocalAddressAttributeName, it.next())
     }
   }
 
-  val localAddress: Session => Option[InetAddress] = {
-    // import optimized TypeCaster
-    import HttpTypeCaster._
-    _(LocalAddressAttributeName).asOption[InetAddress]
-  }
+  val localAddress: Session => Option[InetAddress] =
+    _.attributes.get(LocalAddressAttributeName).map(_.asInstanceOf[InetAddress])
 }

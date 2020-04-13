@@ -20,14 +20,14 @@ import io.gatling.commons.util.Throwables._
 import io.gatling.core.session.{ Session, SessionPrivateAttributes }
 import io.gatling.http.engine.HttpEngine
 import io.gatling.http.protocol.HttpProtocol
-import io.gatling.http.util.{ HttpTypeCaster, SslContexts }
+import io.gatling.http.util.SslContexts
 
 import com.typesafe.scalalogging.StrictLogging
 import javax.net.ssl.KeyManagerFactory
 
 import scala.util.control.NonFatal
 
-private[cache] object SslContextSupport extends StrictLogging {
+private[http] object SslContextSupport extends StrictLogging {
 
   private val HttpSslContextsAttributeName: String = SessionPrivateAttributes.PrivateAttributePrefix + "http.ssl.sslContexts"
 
@@ -43,15 +43,10 @@ private[cache] object SslContextSupport extends StrictLogging {
         }
       case _ => None
     }
-}
-
-private[http] trait SslContextSupport {
-
-  import SslContextSupport._
 
   def setSslContexts(httpProtocol: HttpProtocol, httpEngine: HttpEngine): Session => Session =
     if (httpProtocol.enginePart.shareConnections) {
-      identity
+      Session.Identity
     } else { session =>
       {
         val kmf = resolvePerUserKeyManagerFactory(session, httpProtocol.enginePart.perUserKeyManagerFactory)
@@ -59,9 +54,6 @@ private[http] trait SslContextSupport {
       }
     }
 
-  def sslContexts(session: Session): Option[SslContexts] = {
-    // import optimized TypeCaster
-    import HttpTypeCaster._
-    session(HttpSslContextsAttributeName).asOption[SslContexts]
-  }
+  def sslContexts(session: Session): Option[SslContexts] =
+    session.attributes.get(HttpSslContextsAttributeName).map(_.asInstanceOf[SslContexts])
 }

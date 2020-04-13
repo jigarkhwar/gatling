@@ -57,7 +57,7 @@ object Dependencies {
   private val tdigest                        = "com.tdunning"                         % "t-digest"                        % "3.1"
   private val hdrHistogram                   = "org.hdrhistogram"                     % "HdrHistogram"                    % "2.1.12"
   private val caffeine                       = "com.github.ben-manes.caffeine"        % "caffeine"                        % "2.8.1"
-  private val bouncyCastle                   = "org.bouncycastle"                     % "bcpkix-jdk15on"                  % "1.64"
+  private val bouncyCastle                   = "org.bouncycastle"                     % "bcpkix-jdk15on"                  % "1.65"
   private val quicklens                      = "com.softwaremill.quicklens"          %% "quicklens"                       % "1.5.0"
   private val fastUuid                       = "com.eatthepath"                       % "fast-uuid"                       % "0.1"
   private val pebble                         = "io.pebbletemplates"                   % "pebble"                          % "3.1.2"
@@ -90,13 +90,13 @@ object Dependencies {
     Seq(nettyBuffer, nettyEpoll, junit)
 
   def commonsDependencies(scalaVersion: String) =
-    Seq(scalaReflect(scalaVersion), config, boopickle, spire, quicklens, java8Compat) ++ loggingDeps ++ testDeps
+    Seq(scalaReflect(scalaVersion), config, boopickle, spire, java8Compat) ++ loggingDeps ++ testDeps
 
   val jsonpathDependencies =
     Seq(scalaParserCombinators, jackson) ++ testDeps
 
   val coreDependencies =
-    Seq(akka, akkaSlf4j, sfm, java8Compat, caffeine, pebble, scalaParserCombinators, scopt, nettyHandler) ++
+    Seq(akka, akkaSlf4j, sfm, java8Compat, caffeine, pebble, scalaParserCombinators, scopt, nettyHandler, quicklens) ++
       parserDeps ++ testDeps
 
   val redisDependencies = redisClient +: testDeps

@@ -14,23 +14,14 @@
  * limitations under the License.
  */
 
-package io.gatling.commons.util
+package io.gatling.charts.util
 
 import io.gatling.BaseSpec
+import io.gatling.charts.util.HtmlHelper._
 
-import io.gatling.commons.util.ClassHelper._
+class HtmlHelperSpec extends BaseSpec {
 
-class ClassHelperSpec extends BaseSpec {
-
-  "getShortName" should "shorten Class name" in {
-    classOf[java.util.concurrent.TimeoutException].getShortName shouldBe "j.u.c.TimeoutException"
-  }
-
-  "toClassShortName" should "shorten String with package" in {
-    toClassShortName("foo.bar.baz.Foo") shouldBe "f.b.b.Foo"
-  }
-
-  it should "leave String without package as is" in {
-    toClassShortName("Foo") shouldBe "Foo"
+  "htmlEscape" should "escape with entity chars" in {
+    "fooYéfoo".htmlEscape shouldBe "fooY&eacute;foo"
   }
 }

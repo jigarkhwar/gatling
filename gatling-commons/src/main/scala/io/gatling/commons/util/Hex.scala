@@ -16,12 +16,26 @@
 
 package io.gatling.commons.util
 
-import io.gatling.BaseSpec
-import io.gatling.commons.util.HtmlHelper.HtmlRichString
+import java.{ lang => jl }
 
-class HtmlHelperSpec extends BaseSpec {
+object Hex {
 
-  "htmlEscape" should "escape with entity chars" in {
-    "fooYéfoo".htmlEscape shouldBe "fooY&eacute;foo"
+  def fromHexString(hexString: String): Array[Byte] =
+    hexString.grouped(2).map(Integer.parseInt(_, 16).toByte).toArray
+
+  def toHexString(bytes: Array[Byte]): String = {
+    val sb = new jl.StringBuilder(bytes.length)
+    bytes.foreach { byte =>
+      val shifted = byte & 0xff
+      if (shifted < 0x10) {
+        sb.append('0')
+      }
+      sb.append(jl.Long.toString(shifted.toLong, 16))
+    }
+    sb.toString
   }
+
+  private val HexChars = Array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F')
+
+  def toHexChar(digit: Int): Char = HexChars(digit)
 }
