@@ -8,7 +8,6 @@ object Dependencies {
   private def scalaReflect(version: String)  = "org.scala-lang"             % "scala-reflect"                   % version
   private def scalaCompiler(version: String) = "org.scala-lang"             % "scala-compiler"                  % version
   private val scalaSwing                     = "org.scala-lang.modules"              %% "scala-swing"                     % "2.1.1"
-  private val scalaXml                       = "org.scala-lang.modules"              %% "scala-xml"                       % "1.3.0"
   private val scalaParserCombinators         = "org.scala-lang.modules"              %% "scala-parser-combinators"        % "1.1.2"
   private val java8Compat                    = "org.scala-lang.modules"              %% "scala-java8-compat"              % "0.9.1"
   private val netty                          = "io.netty"                             % "netty-codec-http"                % "4.1.48.Final"
@@ -19,12 +18,13 @@ object Dependencies {
   private val nettyDns                       = netty.organization                     % "netty-resolver-dns"              % netty.revision
   private val nettyEpoll                     = netty.organization                     % "netty-transport-native-epoll"    % netty.revision classifier "linux-x86_64"
   private val nettyHttp2                     = netty.organization                     % "netty-codec-http2"               % netty.revision
-  private val nettyBoringSsl                 = netty.organization                     % "netty-tcnative-boringssl-static" % "2.0.29.Final"
+  private val nettyBoringSsl                 = netty.organization                     % "netty-tcnative-boringssl-static" % "2.0.30.Final"
   private val activation                     = "com.sun.activation"                   % "javax.activation"                % "1.2.0"
   private val akka                           = "com.typesafe.akka"                   %% "akka-actor"                      % "2.6.4"
   private val akkaSlf4j                      = akka.organization                     %% "akka-slf4j"                      % akka.revision
   private val config                         = "com.typesafe"                         % "config"                          % "1.4.0"
-  private val saxon                          = "net.sf.saxon"                         % "Saxon-HE"                        % "10.0"
+  private val saxon                          = ("net.sf.saxon"                        % "Saxon-HE"                        % "10.0")
+    .exclude("jline", "jline")
   private val slf4jApi                       = "org.slf4j"                            % "slf4j-api"                       % "1.7.30"
   private val spire                          = ("org.typelevel"                      %% "spire-macros"                    % "0.16.2")
     .exclude("org.typelevel", "machinist_2.12")
@@ -58,7 +58,7 @@ object Dependencies {
   private val hdrHistogram                   = "org.hdrhistogram"                     % "HdrHistogram"                    % "2.1.12"
   private val caffeine                       = "com.github.ben-manes.caffeine"        % "caffeine"                        % "2.8.1"
   private val bouncyCastle                   = "org.bouncycastle"                     % "bcpkix-jdk15on"                  % "1.64"
-  private val quicklens                      = "com.softwaremill.quicklens"          %% "quicklens"                       % "1.4.12"
+  private val quicklens                      = "com.softwaremill.quicklens"          %% "quicklens"                       % "1.5.0"
   private val fastUuid                       = "com.eatthepath"                       % "fast-uuid"                       % "0.1"
   private val pebble                         = "io.pebbletemplates"                   % "pebble"                          % "3.1.2"
 
@@ -116,7 +116,7 @@ object Dependencies {
     jettyProxy
   ) ++ loggingDeps
 
-  val httpDependencies = Seq(scalaXml) ++ testDeps
+  val httpDependencies = Seq(saxon) ++ testDeps
 
   val jmsDependencies = Seq(jmsApi, fastUuid, activemqBroker) ++ testDeps
 

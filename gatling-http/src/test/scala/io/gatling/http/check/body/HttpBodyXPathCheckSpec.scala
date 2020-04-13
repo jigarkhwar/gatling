@@ -16,53 +16,29 @@
 
 package io.gatling.http.check.body
 
-import java.nio.charset.StandardCharsets._
-import java.util.{ HashMap => JHashMap }
-
-import scala.xml.Elem
-
 import io.gatling.{ BaseSpec, ValidationValues }
 import io.gatling.core.CoreDsl
-import io.gatling.core.check.{ CheckMaterializer, CheckResult }
+import io.gatling.core.check.{ Check, CheckMaterializer, CheckResult }
 import io.gatling.core.check.xpath.XPathCheckType
 import io.gatling.core.config.GatlingConfiguration
 import io.gatling.core.session.SessionSpec.EmptySession
 import io.gatling.http.HttpDsl
 import io.gatling.http.check.HttpCheck
-import io.gatling.http.response.{ Response, StringResponseBody }
+import io.gatling.http.response.Response
 
-import io.netty.handler.codec.http.{ DefaultHttpHeaders, HttpResponseStatus }
 import net.sf.saxon.s9api.XdmNode
 
 class HttpBodyXPathCheckSpec extends BaseSpec with ValidationValues with CoreDsl with HttpDsl {
 
   override implicit val configuration: GatlingConfiguration = GatlingConfiguration.loadForTest()
   private implicit val materializer: CheckMaterializer[XPathCheckType, HttpCheck, Response, Option[XdmNode]] =
-    HttpBodyXPathCheckMaterializer.instance(defaultXmlParsers)
-
-  private def mockResponse(xml: Elem): Response = {
-    val headers = new DefaultHttpHeaders().add(HttpHeaderNames.ContentType, s"${HttpHeaderValues.ApplicationXml}; charset=$UTF_8")
-    val body = xml.toString()
-    Response(
-      request = null,
-      wireRequestHeaders = headers,
-      status = HttpResponseStatus.OK,
-      headers = headers,
-      body = new StringResponseBody(body, UTF_8),
-      checksums = Map.empty,
-      bodyLength = body.getBytes(UTF_8).length,
-      charset = UTF_8,
-      startTimestamp = 0,
-      endTimestamp = 0,
-      isHttp2 = false
-    )
-  }
+    HttpBodyXPathCheckMaterializer.Instance
 
   "xpath.find.exists" should "find single result" in {
 
     val response = mockResponse(<id>1072920417</id>)
 
-    xpath("/id").find.exists.check(response, EmptySession, new JHashMap[Any, Any]).succeeded shouldBe CheckResult(Some("1072920417"), None)
+    xpath("/id").find.exists.check(response, EmptySession, Check.newPreparedCache).succeeded shouldBe CheckResult(Some("1072920417"), None)
   }
 
   it should "find first occurrence" in {
@@ -72,7 +48,7 @@ class HttpBodyXPathCheckSpec extends BaseSpec with ValidationValues with CoreDsl
                                   <id>1072920418</id>
                                 </root>)
 
-    xpath("//id").find.exists.check(response, EmptySession, new JHashMap[Any, Any]).succeeded shouldBe CheckResult(Some("1072920417"), None)
+    xpath("//id").find.exists.check(response, EmptySession, Check.newPreparedCache).succeeded shouldBe CheckResult(Some("1072920417"), None)
   }
 
   "xpath.findAll.exists" should "find all occurrences" in {
@@ -82,7 +58,7 @@ class HttpBodyXPathCheckSpec extends BaseSpec with ValidationValues with CoreDsl
                                   <id>1072920418</id>
                                 </root>)
 
-    xpath("//id").findAll.exists.check(response, EmptySession, new JHashMap[Any, Any]).succeeded shouldBe CheckResult(
+    xpath("//id").findAll.exists.check(response, EmptySession, Check.newPreparedCache).succeeded shouldBe CheckResult(
       Some(Seq("1072920417", "1072920418")),
       None
     )
@@ -95,7 +71,7 @@ class HttpBodyXPathCheckSpec extends BaseSpec with ValidationValues with CoreDsl
                                   <id>1072920418</id>
                                 </root>)
 
-    xpath("//foo").findAll.exists.check(response, EmptySession, new JHashMap[Any, Any]).failed shouldBe "xpath((//foo,Map())).findAll.exists, found nothing"
+    xpath("//foo").findAll.exists.check(response, EmptySession, Check.newPreparedCache).failed shouldBe "xpath((//foo,Map())).findAll.exists, found nothing"
   }
 
   "xpath.count.exists" should "find all occurrences" in {
@@ -105,7 +81,7 @@ class HttpBodyXPathCheckSpec extends BaseSpec with ValidationValues with CoreDsl
                                   <id>1072920418</id>
                                 </root>)
 
-    xpath("//id").count.exists.check(response, EmptySession, new JHashMap[Any, Any]).succeeded shouldBe CheckResult(Some(2), None)
+    xpath("//id").count.exists.check(response, EmptySession, Check.newPreparedCache).succeeded shouldBe CheckResult(Some(2), None)
   }
 
   it should "return 0 when finding nothing instead of failing" in {
@@ -115,6 +91,6 @@ class HttpBodyXPathCheckSpec extends BaseSpec with ValidationValues with CoreDsl
                                   <id>1072920418</id>
                                 </root>)
 
-    xpath("//foo").count.exists.check(response, EmptySession, new JHashMap[Any, Any]).succeeded shouldBe CheckResult(Some(0), None)
+    xpath("//foo").count.exists.check(response, EmptySession, Check.newPreparedCache).succeeded shouldBe CheckResult(Some(0), None)
   }
 }

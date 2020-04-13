@@ -138,11 +138,16 @@ public final class Utf8UrlEncoder {
 
   public static String encodePath(String input) {
     StringBuilder sb = lazyAppendEncoded(null, input, BUILT_PATH_UNTOUCHED_CHARS, false);
-    return sb == null ? input : sb.toString();
+    return sb == null ? null : sb.toString();
+  }
+
+  public static String encodeQuery(String input) {
+    StringBuilder sb = lazyAppendEncoded(null, input, BUILT_QUERY_UNTOUCHED_CHARS, true);
+    return sb == null ? null : sb.toString();
   }
 
   public static void encodeAndAppendQuery(StringBuilder sb, String query) {
-    appendEncoded(sb, query, BUILT_QUERY_UNTOUCHED_CHARS, false);
+    appendEncoded(sb, query, BUILT_QUERY_UNTOUCHED_CHARS, true);
   }
 
   public static void encodeAndAppendQueryElement(StringBuilder sb, CharSequence input) {

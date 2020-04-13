@@ -82,7 +82,7 @@ trait HttpCheckSupport {
   val status: FindCheckBuilder[HttpStatusCheckType, Response, Int] = HttpStatusCheckBuilder
   implicit val httpStatusCheckMaterializer: CheckMaterializer[HttpStatusCheckType, HttpCheck, Response, Response] = HttpStatusCheckMaterializer.Instance
 
-  val header: Expression[String] => MultipleFindCheckBuilder[HttpHeaderCheckType, Response, String] = new HttpHeaderCheckBuilder(_)
+  val header: Expression[CharSequence] => MultipleFindCheckBuilder[HttpHeaderCheckType, Response, String] = new HttpHeaderCheckBuilder(_)
   implicit val httpHeaderCheckMaterializer: CheckMaterializer[HttpHeaderCheckType, HttpCheck, Response, Response] = HttpHeaderCheckMaterializer.Instance
 
   def headerRegex(headerName: Expression[String], pattern: Expression[String])(
@@ -100,8 +100,8 @@ trait HttpCheckSupport {
   implicit val httpBodyRegexCheckMaterializer: CheckMaterializer[RegexCheckType, HttpCheck, Response, String] = HttpBodyRegexCheckMaterializer.Instance
   implicit val httpBodySubstringCheckMaterializer: CheckMaterializer[SubstringCheckType, HttpCheck, Response, String] =
     HttpBodySubstringCheckMaterializer.Instance
-  implicit def httpBodyXPathCheckMaterializer(implicit xmlParsers: XmlParsers): CheckMaterializer[XPathCheckType, HttpCheck, Response, Option[XdmNode]] =
-    HttpBodyXPathCheckMaterializer.instance(xmlParsers)
+  implicit val httpBodyXPathCheckMaterializer: CheckMaterializer[XPathCheckType, HttpCheck, Response, Option[XdmNode]] =
+    HttpBodyXPathCheckMaterializer.Instance
   implicit def httpBodyCssCheckMaterializer(implicit selectors: CssSelectors): CheckMaterializer[CssCheckType, HttpCheck, Response, NodeSelector] =
     HttpBodyCssCheckMaterializer.instance(selectors)
   implicit def httpBodyJsonPathCheckMaterializer(implicit jsonParsers: JsonParsers): CheckMaterializer[JsonPathCheckType, HttpCheck, Response, JsonNode] =

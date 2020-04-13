@@ -51,7 +51,7 @@ private[http] object ResourceFetcher extends StrictLogging {
   ): List[HttpRequest] =
     resources.flatMap {
       _.toRequest(session, httpCaches, httpProtocol, throttled, configuration) match {
-        case Success(httpRequest) => List(httpRequest)
+        case Success(httpRequest) => httpRequest :: Nil
         case Failure(m)           =>
           // shouldn't happen, only static values
           logger.error("Couldn't build request for embedded resource: " + m)
@@ -82,8 +82,8 @@ private[http] class ResourceFetcher(
     response.status match {
       case HttpResponseStatus.OK =>
         response.lastModifiedOrEtag(httpProtocol) match {
-          case Some(newLastModifiedOrEtag) =>
-            httpCaches.computeInferredResourcesIfAbsent(httpProtocol, htmlDocumentUri, newLastModifiedOrEtag, () => inferredResourcesRequests())
+          case Some(lastModifiedOrEtag) =>
+            httpCaches.computeInferredResourcesIfAbsent(httpProtocol, htmlDocumentUri, lastModifiedOrEtag, () => inferredResourcesRequests())
           case _ =>
             // don't cache
             inferredResourcesRequests()
@@ -105,7 +105,7 @@ private[http] class ResourceFetcher(
   def cssFetched(
       uri: Uri,
       responseStatus: HttpResponseStatus,
-      lastModifiedOrEtag: Option[String],
+      maybeLastModifiedOrEtag: Option[String],
       content: String,
       session: Session,
       throttled: Boolean
@@ -121,9 +121,9 @@ private[http] class ResourceFetcher(
     // this css might contain some resources
     responseStatus match {
       case HttpResponseStatus.OK =>
-        lastModifiedOrEtag match {
-          case Some(newLastModifiedOrEtag) =>
-            httpCaches.computeInferredResourcesIfAbsent(httpProtocol, uri, newLastModifiedOrEtag, () => {
+        maybeLastModifiedOrEtag match {
+          case Some(lastModifiedOrEtag) =>
+            httpCaches.computeInferredResourcesIfAbsent(httpProtocol, uri, lastModifiedOrEtag, () => {
               httpCaches.removeCssResources(uri)
               parseCssResources()
             })
@@ -150,7 +150,7 @@ private[http] class ResourceFetcher(
       case Success(requestName) =>
         resource.build(requestName, session) match {
           case Success(httpRequest) =>
-            List(httpRequest)
+            httpRequest :: Nil
 
           case Failure(m) =>
             coreComponents.statsEngine.reportUnbuildableRequest(session, requestName, m)

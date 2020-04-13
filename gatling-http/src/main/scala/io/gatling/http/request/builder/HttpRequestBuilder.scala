@@ -16,17 +16,24 @@
 
 package io.gatling.http.request.builder
 
+import java.security.MessageDigest
+
+import scala.collection.breakOut
+
 import io.gatling.core.body.{ Body, RawFileBodies }
+import io.gatling.core.check.ChecksumCheck
 import io.gatling.core.config.GatlingConfiguration
 import io.gatling.core.session._
 import io.gatling.http.action.HttpRequestActionBuilder
 import io.gatling.http.cache.HttpCaches
-import io.gatling.http.{ HeaderNames, HeaderValues, ResponseTransformer }
+import io.gatling.http.ResponseTransformer
 import io.gatling.http.check.HttpCheck
-import io.gatling.http.check.HttpCheckScope.Status
+import io.gatling.http.check.HttpCheckScope.{ Body, Status }
+import io.gatling.http.engine.response.IsHttpDebugEnabled
 import io.gatling.http.protocol.HttpProtocol
 import io.gatling.http.request._
 
+import io.netty.handler.codec.http.{ HttpHeaderNames, HttpHeaderValues }
 import com.softwaremill.quicklens._
 
 object HttpAttributes {
@@ -63,8 +70,8 @@ object HttpRequestBuilder {
   implicit def toActionBuilder(requestBuilder: HttpRequestBuilder): HttpRequestActionBuilder =
     new HttpRequestActionBuilder(requestBuilder)
 
-  private val MultipartFormDataValueExpression = HeaderValues.MultipartFormData.expressionSuccess
-  private val ApplicationFormUrlEncodedValueExpression = HeaderValues.ApplicationFormUrlEncoded.expressionSuccess
+  private val MultipartFormDataValueExpression = HttpHeaderValues.MULTIPART_FORM_DATA.toString.expressionSuccess
+  private val ApplicationFormUrlEncodedValueExpression = HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString.expressionSuccess
 }
 
 /**
@@ -111,8 +118,8 @@ final case class HttpRequestBuilder(commonAttributes: CommonAttributes, httpAttr
   /**
    * Adds Content-Type header to the request set with "multipart/form-data" value
    */
-  def asMultipartForm: HttpRequestBuilder = header(HeaderNames.ContentType, HttpRequestBuilder.MultipartFormDataValueExpression)
-  def asFormUrlEncoded: HttpRequestBuilder = header(HeaderNames.ContentType, HttpRequestBuilder.ApplicationFormUrlEncodedValueExpression)
+  def asMultipartForm: HttpRequestBuilder = header(HttpHeaderNames.CONTENT_TYPE, HttpRequestBuilder.MultipartFormDataValueExpression)
+  def asFormUrlEncoded: HttpRequestBuilder = header(HttpHeaderNames.CONTENT_TYPE, HttpRequestBuilder.ApplicationFormUrlEncodedValueExpression)
 
   def formParam(key: Expression[String], value: Expression[Any]): HttpRequestBuilder = formParam(SimpleParam(key, value))
   def multivaluedFormParam(key: Expression[String], values: Expression[Seq[Any]]): HttpRequestBuilder = formParam(MultivaluedParam(key, values))
@@ -155,6 +162,17 @@ final case class HttpRequestBuilder(commonAttributes: CommonAttributes, httpAttr
 
     val resolvedRequestExpression = new HttpRequestExpressionBuilder(commonAttributes, httpAttributes, httpCaches, httpProtocol, configuration).build
 
+    val digests: Map[String, MessageDigest] =
+      resolvedChecks
+        .map(_.wrapped)
+        .collect { case check: ChecksumCheck[_] => check.algorithm -> MessageDigest.getInstance(check.algorithm) }(breakOut)
+
+    val storeBodyParts = IsHttpDebugEnabled ||
+      // we can't assume anything about if and how the response body will be used,
+      // let's force bytes so we don't risk decoding binary content
+      resolvedResponseTransformer.isDefined ||
+      resolvedChecks.exists(_.scope == Body)
+
     HttpRequestDef(
       commonAttributes.requestName,
       resolvedRequestExpression,
@@ -164,6 +182,9 @@ final case class HttpRequestBuilder(commonAttributes: CommonAttributes, httpAttr
         throttled = throttled,
         silent = httpAttributes.silent,
         followRedirect = resolvedFollowRedirect,
+        digests = digests,
+        storeBodyParts = storeBodyParts,
+        defaultCharset = configuration.core.charset,
         explicitResources = resolvedResources,
         httpProtocol = httpProtocol
       )

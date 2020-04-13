@@ -100,13 +100,29 @@ class WsCompileTest extends Simulation {
         .sendBytes("hello".getBytes())
         .await(30 seconds)(
           // match first message
-          ws.checkBinaryMessage("checkName").check(bodyBytes.transform(_.length).saveAs("bytesLength"))
+          ws.checkBinaryMessage("checkName").check(bodyBytes.transform(_.length).saveAs("bytesLength")).silent
         )
     )
     .exec(ws("Close WS").close)
     .exec(ws("Open Named", "foo").connect("/bar"))
     .exec(
-      ws("Message1")
-        .sendText(ElFileBody("path"))
+      ws("SendTextMessageWithElFileBody")
+        .sendText(ElFileBody("pathToSomeFile"))
+    )
+    .exec(
+      ws("SendTextMessageWithPebbleStringBody")
+        .sendText(PebbleStringBody("somePebbleString"))
+    )
+    .exec(
+      ws("SendTextMessageWithPebbleFileBody")
+        .sendText(PebbleFileBody("pathToSomeFile"))
+    )
+    .exec(
+      ws("SendBytesMessageWithRawFileBody")
+        .sendBytes(RawFileBody("pathToSomeFile"))
+    )
+    .exec(
+      ws("SendBytesMessageWithByteArrayBody")
+        .sendBytes(ByteArrayBody("${someByteArray}"))
     )
 }

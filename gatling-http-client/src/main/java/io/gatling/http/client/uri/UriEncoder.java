@@ -30,7 +30,7 @@
 
 package io.gatling.http.client.uri;
 
-import static io.gatling.http.client.util.MiscUtils.*;
+import static io.gatling.http.client.util.MiscUtils.isNonEmpty;
 
 import io.gatling.http.client.Param;
 import io.gatling.netty.util.StringBuilderPool;
@@ -70,10 +70,7 @@ public enum UriEncoder {
     }
 
     protected String withQueryWithoutParams(final String query) {
-      // encode query
-      StringBuilder sb = StringBuilderPool.DEFAULT.get();
-      Utf8UrlEncoder.encodeAndAppendQuery(sb, query);
-      return sb.toString();
+      return Utf8UrlEncoder.encodeQuery(query);
     }
 
     protected String withoutQueryWithParams(final List<Param> queryParams) {
@@ -87,7 +84,7 @@ public enum UriEncoder {
 
   RAW {
     public String encodePath(String path) {
-      return path;
+      return null;
     }
 
     private void appendRawQueryParam(StringBuilder sb, String name, String value) {
@@ -106,14 +103,15 @@ public enum UriEncoder {
       // concatenate raw query + raw query params
       StringBuilder sb = StringBuilderPool.DEFAULT.get();
       sb.append(query);
+      sb.append('&');
       appendRawQueryParams(sb, queryParams);
       sb.setLength(sb.length() - 1);
       return sb.toString();
     }
 
     protected String withQueryWithoutParams(final String query) {
-      // return raw query as is
-      return query;
+      // no modification
+      return null;
     }
 
     protected String withoutQueryWithParams(final List<Param> queryParams) {
@@ -149,15 +147,19 @@ public enum UriEncoder {
   }
 
   public Uri encode(Uri uri, List<Param> queryParams) {
+    String originalPath = uri.getPath();
     String newPath = encodePath(uri.getPath());
-    String newQuery = encodeQuery(uri.getQuery(), queryParams);
-    return new Uri(uri.getScheme(),
-            uri.getUserInfo(),
-            uri.getHost(),
-            uri.getPort(),
-            newPath,
-            newQuery,
-            uri.getFragment());
+    String originalQuery = uri.getQuery();
+    String newQuery = encodeQuery(originalQuery, queryParams);
+    return newPath == null && newQuery == null ?
+      uri :
+      new Uri(uri.getScheme(),
+        uri.getUserInfo(),
+        uri.getHost(),
+        uri.getPort(),
+        newPath == null ? originalPath : newPath,
+        newQuery == null ? originalQuery : newQuery,
+        uri.getFragment());
   }
 
   protected abstract String encodePath(String path);

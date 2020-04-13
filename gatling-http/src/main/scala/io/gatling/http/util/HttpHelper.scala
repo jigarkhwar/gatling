@@ -17,21 +17,21 @@
 package io.gatling.http.util
 
 import java.net.URLDecoder
-import java.nio.charset.{ Charset, StandardCharsets }
+import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets.UTF_8
 
 import scala.collection.{ breakOut, BitSet }
 import scala.collection.JavaConverters._
-import scala.io.Codec.UTF8
 import scala.util.Try
 import scala.util.control.NonFatal
 
 import io.gatling.core.session._
 import io.gatling.http.client.realm.{ BasicRealm, DigestRealm, Realm }
 import io.gatling.http.client.uri.Uri
-import io.gatling.http.{ HeaderNames, HeaderValues }
+import io.gatling.http.{ MissingNettyHttpHeaderNames, MissingNettyHttpHeaderValues }
 
 import com.typesafe.scalalogging.StrictLogging
-import io.netty.handler.codec.http.{ HttpHeaders, HttpResponseStatus }
+import io.netty.handler.codec.http.{ HttpHeaderNames, HttpHeaders, HttpResponseStatus }
 import io.netty.handler.codec.http.HttpResponseStatus._
 import io.netty.handler.codec.http.cookie.{ ClientCookieDecoder, Cookie }
 
@@ -44,7 +44,7 @@ private[gatling] object HttpHelper extends StrictLogging {
   private val RedirectStatusCodes = BitSet.empty + MOVED_PERMANENTLY.code + FOUND.code + SEE_OTHER.code + TEMPORARY_REDIRECT.code + PERMANENT_REDIRECT.code
 
   def parseFormBody(body: String): List[(String, String)] = {
-    def utf8Decode(s: String) = URLDecoder.decode(s, UTF8.name)
+    def utf8Decode(s: String) = URLDecoder.decode(s, UTF_8.name)
 
     body
       .split("&")
@@ -70,32 +70,37 @@ private[gatling] object HttpHelper extends StrictLogging {
         passwordValue <- password(session)
       } yield new DigestRealm(usernameValue, passwordValue)
 
-  private def headerExists(headers: HttpHeaders, headerName: String, f: String => Boolean): Boolean = Option(headers.get(headerName)).exists(f)
-  def isCss(headers: HttpHeaders): Boolean = headerExists(headers, HeaderNames.ContentType, _.startsWith(HeaderValues.TextCss))
+  private def headerExists(headers: HttpHeaders, headerName: CharSequence, f: String => Boolean): Boolean = Option(headers.get(headerName)).exists(f)
+  def isCss(headers: HttpHeaders): Boolean = headerExists(headers, HttpHeaderNames.CONTENT_TYPE, _.startsWith(MissingNettyHttpHeaderValues.TextCss.toString))
   def isHtml(headers: HttpHeaders): Boolean =
-    headerExists(headers, HeaderNames.ContentType, ct => ct.startsWith(HeaderValues.TextHtml) || ct.startsWith(HeaderValues.ApplicationXhtml))
-  def isAjax(headers: HttpHeaders): Boolean = headerExists(headers, HeaderNames.XRequestedWith, _ == HeaderValues.XmlHttpRequest)
+    headerExists(
+      headers,
+      HttpHeaderNames.CONTENT_TYPE,
+      ct => ct.startsWith(MissingNettyHttpHeaderValues.TextHtml.toString) || ct.startsWith(MissingNettyHttpHeaderValues.ApplicationXhtml.toString)
+    )
+  def isAjax(headers: HttpHeaders): Boolean =
+    headerExists(headers, MissingNettyHttpHeaderNames.XRequestedWith, _ == MissingNettyHttpHeaderValues.XmlHttpRequest.toString)
 
   private val ApplicationStart = "application/"
   private val ApplicationStartOffset = ApplicationStart.length
-  private val ApplicationJavascriptEnd = HeaderValues.ApplicationJavascript.substring(ApplicationStartOffset)
-  private val ApplicationJsonEnd = HeaderValues.ApplicationJson.substring(ApplicationStartOffset)
-  private val ApplicationXmlEnd = HeaderValues.ApplicationXml.substring(ApplicationStartOffset)
-  private val ApplicationFormUrlEncodedEnd = HeaderValues.ApplicationFormUrlEncoded.substring(ApplicationStartOffset)
-  private val ApplicationXhtmlEnd = HeaderValues.ApplicationXhtml.substring(ApplicationStartOffset)
+  private val ApplicationJavascriptEnd = "javascript"
+  private val ApplicationJsonEnd = "json"
+  private val ApplicationXmlEnd = "xml"
+  private val ApplicationFormUrlEncodedEnd = "x-www-form-urlencoded"
+  private val ApplicationXhtmlEnd = "xhtml+xml"
   private val TextStart = "text/"
   private val TextStartOffset = TextStart.length
-  private val TextCssEnd = HeaderValues.TextCss.substring(TextStartOffset)
-  private val TextCsvEnd = HeaderValues.TextCsv.substring(TextStartOffset)
-  private val TextHtmlEnd = HeaderValues.TextHtml.substring(TextStartOffset)
-  private val TextJavascriptEnd = HeaderValues.TextJavascript.substring(TextStartOffset)
-  private val TextPlainEnd = HeaderValues.TextPlain.substring(TextStartOffset)
-  private val TextXmlEnd = HeaderValues.TextXml.substring(TextStartOffset)
+  private val TextCssEnd = "css"
+  private val TextCsvEnd = "csv"
+  private val TextHtmlEnd = "html"
+  private val TextJavascriptEnd = "javascript"
+  private val TextPlainEnd = "plain"
+  private val TextXmlEnd = "xml"
 
   def isText(headers: HttpHeaders): Boolean =
     headerExists(
       headers,
-      HeaderNames.ContentType,
+      HttpHeaderNames.CONTENT_TYPE,
       ct =>
         ct.startsWith(ApplicationStart) && (
           ct.startsWith(ApplicationJavascriptEnd, ApplicationStartOffset)
@@ -145,18 +150,17 @@ private[gatling] object HttpHelper extends StrictLogging {
       case s =>
         var start = s + "charset=".length
 
-        if (contentType.regionMatches(true, start, "UTF-8", 0, 5)) {
+        if (contentType.regionMatches(true, start, UTF_8.name, 0, 5)) {
           // minor optim, bypass lookup for most common
-          Some(StandardCharsets.UTF_8)
+          Some(UTF_8)
 
         } else {
           var end = contentType.indexOf(';', start) match {
             case -1 => contentType.length
-
-            case e => e
+            case e  => e
           }
 
-          Try {
+          try {
             while (contentType.charAt(start) == ' ' && start < end) start += 1
 
             while (contentType.charAt(end - 1) == ' ' && end > start) end -= 1
@@ -169,13 +173,15 @@ private[gatling] object HttpHelper extends StrictLogging {
 
             val charsetString = contentType.substring(start, end)
 
-            Charset.forName(charsetString)
-          }.toOption
+            Some(Charset.forName(charsetString))
+          } catch {
+            case NonFatal(_) => None
+          }
         }
     }
 
   def responseCookies(headers: HttpHeaders): List[Cookie] = {
-    val setCookieValues = headers.getAll(HeaderNames.SetCookie)
+    val setCookieValues = headers.getAll(HttpHeaderNames.SET_COOKIE)
     if (setCookieValues.isEmpty) {
       Nil
     } else {

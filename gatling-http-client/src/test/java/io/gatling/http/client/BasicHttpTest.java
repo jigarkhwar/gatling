@@ -195,9 +195,8 @@ class BasicHttpTest extends HttpTest {
     withClient().run(client ->
       withServer(server).run(server -> {
         server.enqueueEcho();
-        RequestBodyBuilder<?> byteArrayBody = new ByteArrayRequestBodyBuilder("foo".getBytes(UTF_8));
+        RequestBodyBuilder<?> byteArrayBody = new ByteArrayRequestBodyBuilder("foo".getBytes(UTF_8), null);
         Request request = new RequestBuilder(HttpMethod.GET, Uri.create(getTargetUrl()))
-          .setFixUrlEncoding(false)
           .setBodyBuilder(byteArrayBody).build();
         client.test(request, 0, new TestListener() {
           @Override
